@@ -1,6 +1,9 @@
+import 'package:fiado_app/service/notification_service.dart';
+import 'package:fiado_app/storage/session.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../database/dao/client_debt_dao.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class ClientDetailPage extends StatefulWidget {
   final int clientId;
@@ -471,36 +474,39 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
                               width: 0.5,
                             ),
                           ),
-                          child: Row(
+                          child: Stack(
                             children: [
-                              Container(
-                                width: 36,
-                                height: 36,
-                                decoration: BoxDecoration(
-                                  color: isPaid
-                                      ? const Color(0xFFEAF3DE)
-                                      : _coralLight,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Icon(
-                                  isPaid
-                                      ? Icons.check_rounded
-                                      : Icons.attach_money_rounded,
-                                  size: 18,
-                                  color: isPaid
-                                      ? const Color(0xFF3B6D11)
-                                      : _coral,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
+                              Row(
+                                children: [
+                                  // Ícone
+                                  Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      color: isPaid
+                                          ? const Color(0xFFEAF3DE)
+                                          : _coralLight,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Icon(
+                                      isPaid
+                                          ? Icons.check_rounded
+                                          : Icons.attach_money_rounded,
+                                      size: 18,
+                                      color: isPaid
+                                          ? const Color(0xFF3B6D11)
+                                          : _coral,
+                                    ),
+                                  ),
+
+                                  const SizedBox(width: 12),
+
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
+                                        // Linha valor
                                         Text(
                                           currencyFormat.format(amount),
                                           style: TextStyle(
@@ -512,43 +518,67 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
                                                 : null,
                                           ),
                                         ),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 2,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: isPaid
-                                                ? const Color(0xFFEAF3DE)
-                                                : const Color(0xFFFCEBEB),
-                                            borderRadius: BorderRadius.circular(
-                                              20,
-                                            ),
-                                          ),
-                                          child: Text(
-                                            isPaid ? 'Pago' : 'Em aberto',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w500,
-                                              color: isPaid
-                                                  ? const Color(0xFF3B6D11)
-                                                  : const Color(0xFFA32D2D),
-                                            ),
+
+                                        const SizedBox(height: 4),
+
+                                        // Data
+                                        Text(
+                                          formattedDate,
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: scheme.onSurfaceVariant,
                                           ),
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      formattedDate,
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: scheme.onSurfaceVariant,
+                                  ),
+                                ],
+                              ),
+                              if (!isPaid)
+                                Positioned(
+                                  right: 0,
+                                  top: 0,
+                                  bottom: 0,
+                                  child: Center(
+                                    child: GestureDetector(
+                                      onTap: () => sendWhatsApp(
+                                        '55${widget.phone}',
+                                        'Olá, ${widget.clientName}! Você tem um débito pendente na ${Session.nome} no valor de ${currencyFormat.format(amount)}.',
+                                      ),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFE8F5E9),
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            FaIcon(
+                                              FontAwesomeIcons.whatsapp,
+                                              size: 30,
+                                              color: const Color(0xFF2E7D32),
+                                            ),
+                                            const SizedBox(width: 1),
+                                            // const Text(
+                                            //   'Cobrar',
+                                            //   style: TextStyle(
+                                            //     fontSize: 11,
+                                            //     fontWeight: FontWeight.w500,
+                                            //     color: Color(0xFF2E7D32),
+                                            //   ),
+                                            // ),
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ],
+                                  ),
                                 ),
-                              ),
                             ],
                           ),
                         );
