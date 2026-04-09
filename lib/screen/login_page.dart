@@ -253,48 +253,48 @@ class _LoginPageState extends State<LoginPage> {
 
                   const SizedBox(height: 20),
 
-                  Row(
-                    children: [
-                      Expanded(child: Divider(color: scheme.outlineVariant)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Text(
-                          'não tem conta?',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                      Expanded(child: Divider(color: scheme.outlineVariant)),
-                    ],
-                  ),
+                  // Row(
+                  //   children: [
+                  //     Expanded(child: Divider(color: scheme.outlineVariant)),
+                  //     Padding(
+                  //       padding: const EdgeInsets.symmetric(horizontal: 12),
+                  //       child: Text(
+                  //         'não tem conta?',
+                  //         style: TextStyle(
+                  //           fontSize: 11,
+                  //           color: scheme.onSurfaceVariant,
+                  //         ),
+                  //       ),
+                  //     ),
+                  //     Expanded(child: Divider(color: scheme.outlineVariant)),
+                  //   ],
+                  // ),
 
-                  const SizedBox(height: 16),
+                  // const SizedBox(height: 16),
 
-                  OutlinedButton(
-                    onPressed: () {
-                      // futura tela de cadastro
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: scheme.onSurface,
-                      side: BorderSide(
-                        color: scheme.outlineVariant,
-                        width: 0.5,
-                      ),
-                      minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'Criar conta',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
+                  // OutlinedButton(
+                  //   onPressed: () {
+                  //     // futura tela de cadastro
+                  //   },
+                  //   style: OutlinedButton.styleFrom(
+                  //     foregroundColor: scheme.onSurface,
+                  //     side: BorderSide(
+                  //       color: scheme.outlineVariant,
+                  //       width: 0.5,
+                  //     ),
+                  //     minimumSize: const Size(double.infinity, 50),
+                  //     shape: RoundedRectangleBorder(
+                  //       borderRadius: BorderRadius.circular(12),
+                  //     ),
+                  //   ),
+                  //   child: const Text(
+                  //     'Criar conta',
+                  //     style: TextStyle(
+                  //       fontSize: 14,
+                  //       fontWeight: FontWeight.w500,
+                  //     ),
+                  //   ),
+                  // ),
                 ],
               ),
             ),

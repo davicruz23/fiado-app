@@ -1,3 +1,4 @@
+import 'package:fiado_app/screen/client_history_page.dart';
 import 'package:fiado_app/service/notification_service.dart';
 import 'package:fiado_app/storage/session.dart';
 import 'package:flutter/material.dart';
@@ -29,6 +30,8 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
 
   static const _coral = Color(0xFFD85A30);
   static const _coralLight = Color(0xFFFAECE7);
+  static const _green = Color(0xFF2E7D32);
+  static const _greenLight = Color(0xFFE8F5E9);
 
   @override
   void initState() {
@@ -37,12 +40,225 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
   }
 
   Future<void> _loadData() async {
-    final d = await dao.findDebtsByClient(widget.clientId);
+    final d = await dao.findOpenDebtsByClient(widget.clientId);
     final t = await dao.getTotalDebt(widget.clientId);
     setState(() {
       debts = d;
       total = t;
     });
+  }
+
+  Future<void> _showPaymentDialog(Map<String, dynamic> debt) async {
+    final controller = TextEditingController();
+    final maxAmount = (debt['amount'] as num).toDouble();
+    final currencyFormat = NumberFormat.currency(
+      locale: 'pt_BR',
+      symbol: 'R\$',
+    );
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 12,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 32,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Ícone + título
+            Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: _greenLight,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.check_circle_outline_rounded,
+                    color: _green,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Registrar pagamento',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      widget.clientName,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // Info valor máximo
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: _coralLight,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: _coral.withOpacity(0.2), width: 0.5),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.info_outline_rounded,
+                    size: 14,
+                    color: _coral,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Valor máximo: ${currencyFormat.format(maxAmount)}',
+                    style: const TextStyle(fontSize: 12, color: _coral),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            Text(
+              'VALOR PAGO',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              style: const TextStyle(fontSize: 14),
+              decoration: InputDecoration(
+                hintText: '0,00',
+                prefixText: 'R\$ ',
+                prefixStyle: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: _green,
+                ),
+                filled: true,
+                fillColor: _greenLight.withOpacity(0.4),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                    width: 0.5,
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: _green, width: 1.5),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: _green, width: 2),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            FilledButton.icon(
+              onPressed: () async {
+                final value = double.tryParse(controller.text);
+                if (value == null || value <= 0) return;
+                if (value > maxAmount) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Valor maior que a dívida!')),
+                  );
+                  return;
+                }
+                await dao.payDebt(debt['id'], value);
+                Navigator.pop(context);
+                _loadData();
+              },
+              icon: const Icon(Icons.check_rounded, size: 18),
+              label: const Text(
+                'Confirmar pagamento',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: _green,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            OutlinedButton(
+              onPressed: () => Navigator.pop(context),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                side: BorderSide(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                  width: 0.5,
+                ),
+                minimumSize: const Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'Cancelar',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   String _initials(String name) {
@@ -71,170 +287,158 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
 
   void _showAddDebtSheet() {
     final controller = TextEditingController();
-    final currencyFormat = NumberFormat.currency(
-      locale: 'pt_BR',
-      symbol: 'R\$',
-    );
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Handle
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+      builder: (_) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 20),
-
-              Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                      color: _coralLight,
-                      shape: BoxShape.circle,
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    color: _coralLight,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    _initials(widget.clientName),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: _coral,
                     ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      _initials(widget.clientName),
-                      style: const TextStyle(
-                        fontSize: 13,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Novo fiado',
+                      style: TextStyle(
+                        fontSize: 15,
                         fontWeight: FontWeight.w500,
-                        color: _coral,
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Novo fiado',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w500,
-                        ),
+                    Text(
+                      widget.clientName,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                      Text(
-                        widget.clientName,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              Text(
-                'VALOR',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.5,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 6),
-              TextField(
-                controller: controller,
-                autofocus: true,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                style: const TextStyle(fontSize: 14),
-                decoration: InputDecoration(
-                  hintText: '0,00',
-                  prefixText: 'R\$ ',
-                  prefixStyle: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: _coral,
-                  ),
-                  filled: true,
-                  fillColor: Theme.of(
-                    context,
-                  ).colorScheme.surfaceContainerHighest,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                      width: 0.5,
                     ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'VALOR',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 6),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              style: const TextStyle(fontSize: 14),
+              decoration: InputDecoration(
+                hintText: '0,00',
+                prefixText: 'R\$ ',
+                prefixStyle: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: _coral,
+                ),
+                filled: true,
+                fillColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                    width: 0.5,
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: _coral, width: 1.5),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: _coral, width: 2),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: _coral, width: 1.5),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: _coral, width: 2),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
                 ),
               ),
-
-              const SizedBox(height: 16),
-
-              FilledButton.icon(
-                onPressed: () async {
-                  final value = double.tryParse(
-                    controller.text.replaceAll(',', '.'),
-                  );
-                  if (value == null || value <= 0) return;
-                  await dao.addDebt(widget.clientId, value);
-                  if (!mounted) return;
-                  Navigator.pop(context);
-                  _loadData();
-                },
-                icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                label: const Text(
-                  'Salvar fiado',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-                ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: _coral,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: () async {
+                final value = double.tryParse(
+                  controller.text.replaceAll(',', '.'),
+                );
+                if (value == null || value <= 0) return;
+                await dao.addDebt(widget.clientId, value);
+                if (!mounted) return;
+                Navigator.pop(context);
+                _loadData();
+              },
+              icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+              label: const Text(
+                'Salvar fiado',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: _coral,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-            ],
-          ),
-        );
-      },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -279,6 +483,52 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
                     'Detalhes',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
                   ),
+                  const Spacer(),
+                  // Histórico no AppBar — limpo e sem duplicação
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ClientHistoryPage(
+                          clientId: widget.clientId,
+                          clientName: widget.clientName,
+                        ),
+                      ),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: scheme.outlineVariant,
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.history_rounded,
+                            size: 16,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Histórico',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -289,6 +539,7 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
                     width: 56,
@@ -311,6 +562,7 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
                           widget.clientName,
@@ -318,6 +570,7 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
                             fontSize: 17,
                             fontWeight: FontWeight.w500,
                           ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 3),
                         Row(
@@ -340,7 +593,53 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
                       ],
                     ),
                   ),
-                  // Total badge
+
+                  const SizedBox(width: 8),
+
+                  // WhatsApp cobrar geral
+                  GestureDetector(
+                    onTap: () => sendWhatsApp(
+                      '55${widget.phone}',
+                      'Olá, ${widget.clientName}! Você tem um débito pendente na ${Session.nome} no valor de ${currencyFormat.format(total)}.',
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _greenLight,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: _green.withOpacity(0.2),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          FaIcon(
+                            FontAwesomeIcons.whatsapp,
+                            size: 20,
+                            color: _green,
+                          ),
+                          SizedBox(height: 3),
+                          Text(
+                            'Cobrar',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color: _green,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  // Badge "DEVE"
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -350,20 +649,20 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
                       color: _coralLight,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: _coral.withValues(alpha: 0.2),
+                        color: _coral.withOpacity(0.2),
                         width: 0.5,
                       ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(
+                        const Text(
                           'DEVE',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0.3,
-                            color: const Color(0xFF993C1D),
+                            color: Color(0xFF993C1D),
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -384,7 +683,7 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
 
             const SizedBox(height: 16),
 
-            // ── Stats row ───────────────────────────────────────
+            // ── Stats row (sem o card de Histórico — movido pro AppBar) ──
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
@@ -407,7 +706,7 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
               child: Text(
-                'HISTÓRICO DE FIADOS',
+                'FIADOS ATIVOS',
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w600,
@@ -451,7 +750,7 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(12, 0, 12, 100),
                       itemCount: debts.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 6),
+                      separatorBuilder: (_, __) => const SizedBox(height: 6),
                       itemBuilder: (context, index) {
                         final d = debts[index];
                         final amount = (d['amount'] as num).toDouble();
@@ -474,111 +773,103 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
                               width: 0.5,
                             ),
                           ),
-                          child: Stack(
+                          child: Row(
                             children: [
-                              Row(
-                                children: [
-                                  // Ícone
-                                  Container(
+                              // Ícone de status
+                              Container(
+                                width: 36,
+                                height: 36,
+                                decoration: BoxDecoration(
+                                  color: isPaid
+                                      ? const Color(0xFFEAF3DE)
+                                      : _coralLight,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  isPaid
+                                      ? Icons.check_rounded
+                                      : Icons.attach_money_rounded,
+                                  size: 18,
+                                  color: isPaid
+                                      ? const Color(0xFF3B6D11)
+                                      : _coral,
+                                ),
+                              ),
+
+                              const SizedBox(width: 12),
+
+                              // Valor + data
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      currencyFormat.format(amount),
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: scheme.onSurface,
+                                        decoration: isPaid
+                                            ? TextDecoration.lineThrough
+                                            : null,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      formattedDate,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: scheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // Ações — só quando em aberto
+                              if (!isPaid) ...[
+                                const SizedBox(width: 8),
+                                // Botão pagar
+                                GestureDetector(
+                                  onTap: () => _showPaymentDialog(d),
+                                  child: Container(
                                     width: 36,
                                     height: 36,
                                     decoration: BoxDecoration(
-                                      color: isPaid
-                                          ? const Color(0xFFEAF3DE)
-                                          : _coralLight,
+                                      color: _greenLight,
                                       borderRadius: BorderRadius.circular(10),
                                     ),
-                                    child: Icon(
-                                      isPaid
-                                          ? Icons.check_rounded
-                                          : Icons.attach_money_rounded,
+                                    child: const Icon(
+                                      Icons.check_rounded,
                                       size: 18,
-                                      color: isPaid
-                                          ? const Color(0xFF3B6D11)
-                                          : _coral,
+                                      color: _green,
                                     ),
                                   ),
-
-                                  const SizedBox(width: 12),
-
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        // Linha valor
-                                        Text(
-                                          currencyFormat.format(amount),
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w500,
-                                            color: scheme.onSurface,
-                                            decoration: isPaid
-                                                ? TextDecoration.lineThrough
-                                                : null,
-                                          ),
-                                        ),
-
-                                        const SizedBox(height: 4),
-
-                                        // Data
-                                        Text(
-                                          formattedDate,
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: scheme.onSurfaceVariant,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                ),
+                                const SizedBox(width: 6),
+                                // Botão WhatsApp
+                                GestureDetector(
+                                  onTap: () => sendWhatsApp(
+                                    '55${widget.phone}',
+                                    'Olá, ${widget.clientName}! Você tem um débito pendente na ${Session.nome} no valor de ${currencyFormat.format(amount)} Reais.',
                                   ),
-                                ],
-                              ),
-                              if (!isPaid)
-                                Positioned(
-                                  right: 0,
-                                  top: 0,
-                                  bottom: 0,
-                                  child: Center(
-                                    child: GestureDetector(
-                                      onTap: () => sendWhatsApp(
-                                        '55${widget.phone}',
-                                        'Olá, ${widget.clientName}! Você tem um débito pendente na ${Session.nome} no valor de ${currencyFormat.format(amount)}.',
-                                      ),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 3,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFE8F5E9),
-                                          borderRadius: BorderRadius.circular(
-                                            20,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            FaIcon(
-                                              FontAwesomeIcons.whatsapp,
-                                              size: 30,
-                                              color: const Color(0xFF2E7D32),
-                                            ),
-                                            const SizedBox(width: 1),
-                                            // const Text(
-                                            //   'Cobrar',
-                                            //   style: TextStyle(
-                                            //     fontSize: 11,
-                                            //     fontWeight: FontWeight.w500,
-                                            //     color: Color(0xFF2E7D32),
-                                            //   ),
-                                            // ),
-                                          ],
-                                        ),
+                                  child: Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      color: _greenLight,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Center(
+                                      child: FaIcon(
+                                        FontAwesomeIcons.whatsapp,
+                                        size: 18,
+                                        color: _green,
                                       ),
                                     ),
                                   ),
                                 ),
+                              ],
                             ],
                           ),
                         );
@@ -589,7 +880,6 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
         ),
       ),
 
-      // ── FAB ──────────────────────────────────────────────────
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddDebtSheet,
         backgroundColor: _coral,
@@ -601,7 +891,6 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
   }
 }
 
-// ── Widget auxiliar ───────────────────────────────────────────
 class _StatCard extends StatelessWidget {
   final String label;
   final String value;
