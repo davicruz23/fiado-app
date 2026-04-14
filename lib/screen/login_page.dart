@@ -29,32 +29,38 @@ class _LoginPageState extends State<LoginPage> {
       errorMessage = null;
     });
 
-    final cpf = cpfController.text.trim();
-    final password = passwordController.text.trim();
+    try {
+      final cpf = cpfController.text.trim();
+      final password = passwordController.text.trim();
 
-    if (cpf.isEmpty || password.isEmpty) {
+      if (cpf.isEmpty || password.isEmpty) {
+        setState(() {
+          errorMessage = 'Preencha todos os campos';
+        });
+        return;
+      }
+
+      final result = await authService.login(cpf, password);
+
+      if (result != null) {
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const HomePage()),
+          );
+        }
+      } else {
+        setState(() {
+          errorMessage = 'CPF ou senha inválidos. Tente novamente.';
+        });
+      }
+    } catch (e) {
+      _showErrorModal(e.toString().replaceAll('Exception: ', ''));
+    } finally {
       setState(() {
         isLoading = false;
-        errorMessage = 'Preencha todos os campos';
       });
-      return;
     }
-
-    final result = await authService.login(cpf, password);
-
-    if (result != null) {
-      await TokenStorage.saveTokens(result.accessToken, result.refreshToken);
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomePage()),
-        );
-      }
-    } else {
-      setState(() => errorMessage = 'CPF ou senha inválidos. Tente novamente.');
-    }
-
-    setState(() => isLoading = false);
   }
 
   @override
@@ -351,6 +357,28 @@ class _LoginPageState extends State<LoginPage> {
         borderSide: const BorderSide(color: _coral, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    );
+  }
+
+  void _showErrorModal(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          title: const Text('Atenção'),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
